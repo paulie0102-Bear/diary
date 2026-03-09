@@ -34,13 +34,22 @@
     z-index: 20;
 }
 
+/* 基礎設定：移除原本的背景色，保留動畫 */
 #hpFill { 
     height: 100%; 
-    background-color: #4caf50 !important; 
     width: 100%; 
     display: block !important;
-    transition: width 0.5s ease; 
+    transition: width 0.5s ease, background-color 0.3s ease; /* 增加顏色過渡動畫 */
 }
+
+/* 狀態 1：健康 (50% 以上) */
+.hp-green { background-color: #4caf50 !important; }
+
+/* 狀態 2：虛弱 (25% ~ 50%) */
+.hp-yellow { background-color: #ffeb3b !important; }
+
+/* 狀態 3：瀕死 (25% 以下) */
+.hp-red { background-color: #f44336 !important; }
         .encounter-progress { position: absolute; top: 10px; left: 10px; width: 120px; font-size: 10px; background: rgba(255,255,255,0.7); padding: 5px; border-radius: 5px; }
 
         /* 圖鑑佈局 */
@@ -53,7 +62,7 @@
         /* 底部控制面板 (2列4欄) */
         .control-panel { 
             display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
-            gap: 2px; background: #111; height: 140px; position: fixed; bottom: 0; width: 100%; padding: 5px; box-sizing: border-box; 
+            gap: 2px; background: #111; height: 140px; position: fixed; bottom: 60px; width: 100%; padding: 5px; box-sizing: border-box; 
         }
         .btn-nav { background: #333; color: white; border: none; font-size: 12px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
         .btn-nav:active { background: #555; }
@@ -134,6 +143,119 @@
   .encounter-active .grass-left { transform: translateX(-110%); }
   .encounter-active .grass-right { transform: translateX(110%); }
 </style>
+<style>
+    .csv-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;  /* 稍微加大間距 */
+    padding: 10px;  /* 增加內邊距讓顯示區域更大 */
+    margin-bottom: 8px;  /* 調整底部間距 */
+    background: white;
+    border-radius: 15px;  /* 調整圓角 */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);  /* 增加陰影 */
+}
+
+.csv-date, .csv-cat, .csv-amt {
+    font-size: 14px;  /* 字體稍微放大 */
+}
+
+.csv-date {
+    width: 130px;
+    font-weight: bold;
+    color: #333;
+}
+
+.csv-cat {
+    width: 90px;
+    font-weight: bold;
+    color: #666;
+}
+
+.csv-note {
+    flex: 1;
+    font-size: 14px;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    padding: 4px;
+    font-style: italic;  /* 加上斜體效果 */
+}
+
+.csv-amt {
+    width: 70px;
+    text-align: right;
+    font-weight: bold;
+    color: #2c7;
+}
+
+/* 手機版 */
+@media (max-width: 600px) {
+    .csv-item {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .csv-date {
+        width: 40%;
+    }
+
+    .csv-cat {
+        width: 40%;
+    }
+
+    .csv-note {
+        width: 100%;
+    }
+
+    .csv-amt {
+        width: 100%;
+        text-align: right;
+    }
+}
+
+/* 每一筆資料的外容器 */
+.csv-item-mobile {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px; /* 每一筆資料間的間隔 */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 兩排之間的垂直距離 */
+}
+
+/* 每排內部的佈局 */
+.csv-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* 調整輸入框比例 */
+.csv-date, .csv-cat {
+    flex: 1; /* 平分空間 */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.csv-note {
+    flex: 3; /* 讓商家備註長一點 */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.csv-amt {
+    flex: 1;
+    text-align: right;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #e67e22; /* 給金額一個明顯的顏色 */
+}
+
+</style>
+
 
 </head>
 <body>
@@ -197,7 +319,7 @@
             <select id="ballSelect" style="flex:1; padding:10px;"></select>
             <button onclick="throwBall()" style="background:var(--p); color:white; padding:0 25px; border:none; border-radius:8px; font-weight:bold;">投球</button>
         </div>
-        <div id="turnInfo" style="font-size:11px; color:gray; margin-top:8px; text-align:center;">剩餘回合：7 (在此之前不會逃跑)</div>
+        <div id="turnInfo" style="font-size:11px; color:gray; margin-top:8px; text-align:center;">最大回合：7 (在此之前不會逃跑)</div>
     </div>
 
     <div class="control-panel">
@@ -271,6 +393,7 @@
     <div class="card">
         <h3>👤 訓練家資訊</h3>
         <p>當前稱號：<b id="st-title" style="color:var(--mega);">初出茅廬</b></p>
+        <p>訓練家等級：<b id="st-level" style="color:var(--accent);">Lv. 1</b></p>
         <p>圖鑑進度：<span id="st-dex-count">0</span> / 493</p>
         <hr>
         <p>進化石進度 (<span id="p-evo-txt">0</span>/5)</p>
@@ -318,7 +441,7 @@
                 <button onclick="buy('great', 300)" style="background:var(--p); color:white; border:none; padding:8px 15px; border-radius:5px;">購買</button>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png" style="vertical-align:middle"> 高級球 (P$ 600)</span>
+                <span><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png" style="vertical-align:middle"> 高級球 (P$ 500)</span>
                 <button onclick="buy('ultra', 600)" style="background:var(--p); color:white; border:none; padding:8px 15px; border-radius:5px;">購買</button>
             </div>
         </div>
@@ -343,11 +466,35 @@
 
 <div id="historyPage" class="page">
     <div class="card">
+        <h3>📱 我的手機載具</h3>
+        <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; border: 1px dashed #ccc;">
+            <div id="barcodeContainer" style="display: none; margin-bottom: 10px;">
+                <img id="barcodeImg" style="max-width: 100%; height: 80px;">
+                <div id="barcodeText" style="font-family: monospace; font-weight: bold; letter-spacing: 2px;"></div>
+            </div>
+            
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="carrierInput" placeholder="範例: /ABC+123" 
+                       style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; text-transform: uppercase;">
+                <button onclick="saveCarrier()" style="background: var(--p); color: white; border: none; padding: 0 15px; border-radius: 5px;">儲存</button>
+            </div>
+        </div>
+
+        <hr style="margin: 20px 0;">
         <h3>📜 紀錄與載入</h3>
         <button onclick="document.getElementById('csvFile').click()" style="background:var(--p); color:white; width:100%; padding:15px; border:none; border-radius:10px; margin-bottom:15px;">📑 導入財政部 CSV 載具資料</button>
         <input type="file" id="csvFile" style="display:none" onchange="handleCSV(event)">
-        <hr>
-        <p style="font-size:13px; color:gray;">手動紀錄查詢 (限30天內，單次區間7天)</p>
+        <div id="csvPreviewArea" style="display:none; margin-top:20px; padding:10px; border:2px dashed #ccc; border-radius:10px;">
+    <h3>📋 匯入預覽</h3>
+    <p style="font-size:12px; color:gray;">(在此修改分類後點擊「正式導入」)</p>
+    <div id="previewList" style="max-height:300px; overflow-y:auto; margin-bottom:10px;"></div>
+    <div style="display:flex; gap:10px;">
+        <button onclick="confirmImport()" style="flex:1; background:#28a745; color:white; padding:10px; border:none; border-radius:5px;">✅ 正式導入</button>
+        <button onclick="cancelImport()" style="flex:1; background:#6c757d; color:white; padding:10px; border:none; border-radius:5px;">✖ 取消</button>
+    </div>
+</div>
+<hr>
+        <p style="font-size:13px; color:gray;">手動紀錄查詢)</p>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:10px;">
             <input type="date" id="hStart"> <input type="date" id="hEnd">
         </div>
@@ -445,61 +592,61 @@ let currentChartType = 'year';
 function getPkmnName(id) {
     return POKEMON_NAMES[id] || `No.${id}`;
 }
-
 function getLvlBonus() {
     // 每升 1 級，基礎捕捉率增加 1.5%
-    return Math.floor((s.lvl - 1) * 1.5); 
+    return Math.floor((s.lvl - 1) * 1.5);
 }
+
 
 // --- [ 核心數據結構 ] ---
 const API = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites";
 const MEGA_ABLE = [
-    3,   // 妙蛙花
-    6,   // 噴火龍 (X/Y)
-    9,   // 水箭龜
-    15,  // 大針蜂
-    18,  // 比雕
-    65,  // 胡地
-    80,  // 呆河馬
-    94,  // 耿鬼
-    115, // 袋獸
-    127, // 大甲
-    130, // 暴鯉龍
-    142, // 化石翼龍
-    150, // 超夢 (X/Y)
-    181, // 電龍
-    208, // 大鋼蛇
-    212, // 巨鉗螳螂
-    214, // 赫拉克羅斯
-    229, // 黑魯加
-    248, // 班基拉斯
-    254, // 蜥蜴王
-    257, // 火雞戰士
-    260, // 巨沼怪
-    282, // 沙奈朵
-    302, // 勾魂眼
-    303, // 大嘴娃
-    306, // 波士可多拉
-    308, // 恰雷姆
-    310, // 雷電獸
-    319, // 巨牙鯊
-    323, // 噴火駝
-    334, // 七夕青鳥
-    354, // 詛咒娃娃
-    359, // 阿勃梭魯
-    362, // 冰鬼護
-    373, // 暴飛龍
-    376, // 巨金怪
-    380, // 拉帝亞斯
-    381, // 拉帝歐斯
-    382, // 蓋歐卡 (原始回歸)
-    383, // 固拉多 (原始回歸)
-    384, // 烈空坐
-    428, // 長耳兔
-    445, // 烈咬陸鯊
-    448, // 路卡利歐
-    460, // 暴雪王
-    475  // 艾路雷朵
+    1, 2, 3,     // 妙蛙種子、妙蛙草、妙蛙花
+    4, 5, 6,     // 小火龍、火恐龍、噴火龍
+    7, 8, 9,     // 傑尼龜、卡米龜、水箭龜
+    13, 14, 15,  // 獨角蟲、鐵殼蛹、大針蜂
+    16, 17, 18,  // 波波、比比鳥、大比鳥
+    63, 64, 65,  // 凱西、勇基拉、胡地
+    79, 80,      // 呆呆獸、呆殼獸
+    92, 93, 94,  // 鬼斯、鬼斯通、耿鬼
+    95, 208,     // 大岩蛇、大鋼蛇
+    115,         // 袋獸
+    123, 212,    // 飛天螳螂、巨鉗螳螂
+    127,         // 大甲 (凱羅斯)
+    129, 130,    // 鯉魚王、暴鯉龍
+    142,         // 化石翼龍
+    150,         // 超夢
+    179, 180, 181, // 咩利羊、茸茸羊、電龍
+    214,         // 赫拉克羅斯
+    228, 229,    // 戴魯比、黑魯加
+    246, 247, 248, // 幼基拉斯、沙基拉斯、班基拉斯
+    252, 253, 254, // 木守宮、森林蜥蜴、蜥蜴王
+    255, 256, 257, // 火稚雞、力壯雞、火焰雞
+    258, 259, 260, // 水躍魚、沼躍魚、巨沼怪
+    280, 281, 282, // 拉魯拉絲、奇魯莉安、沙奈朵
+    302,         // 勾魂眼
+    303,         // 大嘴娃
+    304, 305, 306, // 可可多拉、可多拉、波士可多拉
+    307, 308,    // 瑪沙那、恰雷姆
+    309, 310,    // 落雷獸、雷電獸
+    318, 319,    // 利牙魚、巨牙鯊
+    322, 323,    // 呆火駝、噴火駝
+    333, 334,    // 青綿鳥、七夕青鳥
+    353, 354,    // 怨影娃娃、詛咒娃娃
+    359,         // 阿勃梭魯
+    361, 362,    // 雪童子、冰鬼護
+    371, 372, 373, // 寶貝龍、甲殼龍、暴飛龍
+    374, 375, 376, // 鐵啞鈴、金屬怪、巨金怪
+    380,         // 拉帝亞斯
+    381,         // 拉帝歐斯
+    382,         // 蓋歐卡
+    383,         // 固拉多
+    384,         // 烈空坐
+    427, 428,    // 卷卷耳、長耳兔
+    443, 444, 445, // 圓陸鯊、尖牙陸鯊、烈咬陸鯊
+    447, 448,    // 利歐路、路卡利歐
+    459, 460,    // 雪笠怪、暴雪王
+    475          // 艾路雷朵
 ];
 // 分支進化字典
 const EVO_BRANCHES = {
@@ -514,9 +661,9 @@ let s = {
     pool: 0, 
     items: {poke:10, great:5, ultra:0, master:1, stone:0, mstone:0},
     prog: {evo:0, mega:0}, 
-    buddyId: 25, 
+    buddyId: 25,
     isShinyBuddy: false, 
-    owned: [25], 
+    owned: [25,133], 
     shinyOwned: [], 
     megaUntil: 0, 
     currentMegaType: "",
@@ -544,6 +691,93 @@ window.onload = () => {
     updateUI();
     setInterval(tickMega, 1000);
 };
+// 任務重置檢查函式 (含每日與每週)
+function checkTaskReset() {
+    const now = new Date();
+    const today = now.toDateString();
+    
+    // 計算「本週」標籤 (以該週週一為基準)
+    const day = now.getDay(); // 0(日) 到 6(六)
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // 調整至週一
+    const mondayDate = new Date(now.setDate(diff)).toDateString();
+
+    let hasChanged = false;
+
+    // 1. 每日重置判定
+    if (s.tasks.dailyDate !== today) {
+        s.tasks.dailyDate = today;
+        s.tasks.dRec = 0;   
+        s.tasks.dCatch = 0; 
+        s.tasks.claimed = s.tasks.claimed.filter(id => !id.includes('daily'));
+        hasChanged = true;
+    }
+
+    // 2. 每週重置判定 (每週一重置)
+    if (s.tasks.weeklyDate !== mondayDate) {
+        s.tasks.weeklyDate = mondayDate;
+        s.tasks.wRec = 0;   
+        s.tasks.wCatch = 0; 
+        s.tasks.claimed = s.tasks.claimed.filter(id => !id.includes('weekly'));
+        hasChanged = true;
+    }
+
+    // 如果有變動，立即存檔
+    if (hasChanged) {
+        localStorage.setItem('pokemaster_v60', JSON.stringify(s));
+    }
+}
+// 1. 修改 window.onload，加入載具初始化
+window.onload = () => {
+    const saved = localStorage.getItem('pokemaster_v60');
+    if(saved) {
+        const loaded = JSON.parse(saved);
+        s = { ...s, ...loaded }; 
+    }
+    document.getElementById('recDate').valueAsDate = new Date();
+    document.getElementById('chartMonthPicker').value = new Date().toISOString().substring(0, 7);
+    
+    updateUI();
+    initCarrier(); // <-- 這裡新增：初始化載具條碼
+    setInterval(tickMega, 1000);
+};
+
+// 2. 在 updateUI 附近加入這三個載具專用函式
+function initCarrier() {
+    const savedCarrier = localStorage.getItem('user_carrier');
+    if (savedCarrier) {
+        document.getElementById('carrierInput').value = savedCarrier;
+        renderBarcode(savedCarrier);
+    }
+}
+
+function saveCarrier() {
+    let code = document.getElementById('carrierInput').value.trim().toUpperCase();
+    
+    // 驗證格式：/ 開頭，後面 7 碼英數，總共 8 碼
+    const carrierReg = /^\/[A-Z0-9.+-]{7}$/;
+    if (!carrierReg.test(code)) {
+        alert("載具格式錯誤！請輸入 '/' 開頭的 8 碼字串 (例如 /ABC+123)");
+        return;
+    }
+    
+    localStorage.setItem('user_carrier', code);
+    renderBarcode(code);
+    showMsg("載具條碼已成功儲存！");
+}
+
+function renderBarcode(code) {
+    const img = document.getElementById('barcodeImg');
+    const container = document.getElementById('barcodeContainer');
+    const text = document.getElementById('barcodeText');
+
+    // 這裡是生成條碼的關鍵
+    // 使用 bwip-js API 生成標準 Code 39 條碼
+    const apiUrl = `https://bwipjs-api.metafloor.com/?bcid=code39&text=${encodeURIComponent(code)}&includetext=false&scale=3&height=10`;
+    
+    img.src = apiUrl;
+    text.innerText = code;
+    container.style.display = "block";
+}
 
 // --- [ 等級加成計算 ] ---
 function getLvlBonus() {
@@ -551,20 +785,32 @@ function getLvlBonus() {
     return Math.floor((s.lvl - 1) * 1.5); 
 }
 // --- [ 經驗值與升級系統 ] ---
-function gainExp(amt) {
-    s.exp += amt;
-    // 如果經驗值超過門檻就升級
-    while (s.exp >= s.nextExp) {
-        s.exp -= s.nextExp;
-        s.lvl++;
-        s.nextExp = Math.floor(s.nextExp * 1.2); // 每級提升 20% 難度
-        alert(`🎊 恭喜！你升級到了 Lv.${s.lvl}！\n基礎捕捉率提升了！`);
+function gainExp(amount) {
+    s.exp += amount;
+    // 假設 100 經驗升一級
+    if (s.exp >= 100) {
+        s.exp -= 100;
+        s.lvl = (s.lvl || 1) + 1;
+        showMsg(`🌟 訓練家等級提升至 Lv.${s.lvl}！`);
+        updateUI(); // 👈 這裡呼叫，畫面才會跳動
     }
-    updateUI(); // 確保玩家頁面數字會跳動
 }
+
+function showMsg(text){
+    document.getElementById("msg").innerText = text;
+}
+
 function updateUI() {
     localStorage.setItem('pokemaster_v60', JSON.stringify(s));
-    
+    const stLevel = document.getElementById('st-level');
+
+    if (stLevel) stLevel.innerText = `Lv. ${s.lvl || 1}`;
+
+
+
+    const stDex = document.getElementById('st-dex-count');
+
+    if (stDex) stDex.innerText = s.owned.length;
     document.getElementById('shop-bal').innerText = s.bal;
     document.getElementById('enc-prog').innerText = s.pool;
     document.getElementById('st-dex-count').innerText = s.owned.length;
@@ -583,19 +829,59 @@ function updateUI() {
     document.getElementById('st-shiny-rate').innerText = finalShiny + "%";
 
     // 夥伴圖片渲染邏輯 (含 Mega 分支)
-    let bImg;
-    if(isMega) {
-        let suffix = s.currentMegaType ? `-mega-${s.currentMegaType}` : "-mega";
-        bImg = `${API}/pokemon/other/official-artwork/${s.buddyId}${suffix}.png`;
-    } else {
-        bImg = `${API}/pokemon/${s.isShinyBuddy?'shiny/':''}${s.buddyId}.png`;
-    }
-    const bEl = document.getElementById('buddyImg');
-    bEl.src = bImg;
-    bEl.onerror = () => { if(isMega) bEl.src = `${API}/pokemon/${s.buddyId}${s.currentMegaType?'-mega-'+s.currentMegaType:'-mega'}.png`; };
-    isMega ? bEl.classList.add('mega-fx') : bEl.classList.remove('mega-fx');
+// --- 夥伴圖片渲染邏輯 (支援特殊 ID 映射版) ---
+const isMegaActive = Date.now() < s.megaUntil; 
+const bEl = document.getElementById('buddyImg');
 
-    renderBag();
+// 1~493 完整 Mega 對照表
+const megaMapping = {
+    3: 10001, 9: 10002, 15: 10003, 18: 10004, 65: 10005, 80: 10071, 94: 10006, 
+    115: 10007, 127: 10008, 130: 10009, 142: 10010, 181: 10012, 208: 10013, 
+    212: 10014, 214: 10015, 229: 10016, 248: 10017, 254: 10019, 257: 10020, 
+    260: 10021, 282: 10022, 302: 10066, 303: 10023, 306: 10024, 308: 10025, 
+    310: 10026, 319: 10070, 323: 10069, 334: 10067, 354: 10027, 359: 10028, 
+    362: 10068, 373: 10029, 376: 10030, 380: 10031, 381: 10032, 384: 10033, 
+    428: 10073, 445: 10036, 448: 10037, 460: 10038, 475: 10079
+};
+
+let bImg;
+if (isMegaActive) {
+    let displayId = s.buddyId;
+
+    // A. 處理特殊分支 (噴火龍 6, 超夢 150)
+    if (s.buddyId === 6) {
+        displayId = (s.currentMegaType === 'x') ? 10034 : 10035;
+    } else if (s.buddyId === 150) {
+        displayId = (s.currentMegaType === 'x') ? 10043 : 10044;
+    } 
+    // B. 處理清單中其他的 Mega (查表)
+    else if (megaMapping[s.buddyId]) {
+        displayId = megaMapping[s.buddyId];
+    }
+
+    // 使用官方藝術圖路徑 (Official Artwork)
+    bImg = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${displayId}.png`;
+    bEl.classList.add('mega-fx');
+} else {
+    // 一般狀態 (含閃光判定)
+    bImg = `${API}/pokemon/${s.isShinyBuddy ? 'shiny/' : ''}${s.buddyId}.png`;
+    bEl.classList.remove('mega-fx');
+}
+
+bEl.src = bImg;
+
+// 備援機制：如果 Official Artwork 讀取失敗，回退到普通圖片
+bEl.onerror = () => { 
+    if (isMegaActive) {
+        // 如果連特殊的 ID 都抓不到，最後才嘗試你原本的 -mega 命名法
+        let suffix = s.currentMegaType ? `-mega-${s.currentMegaType}` : "-mega";
+        bEl.src = `${API}/pokemon/${s.buddyId}${suffix}.png`; 
+    } else {
+        bEl.src = `${API}/pokemon/${s.buddyId}.png`;
+    }
+};
+
+renderBag();
 }
 
 function getTitle(count) {
@@ -739,6 +1025,8 @@ function spawnEnemy() {
     const img = document.getElementById('enemyImg');
     const hpFill = document.getElementById('hpFill');
 
+
+
     // 1. 先顯示區域 (關鍵：區域不顯示，寬度計算就可能失敗)
     document.getElementById('enemyArea').style.display = "block";
     document.getElementById('battleActions').style.display = "block";
@@ -748,7 +1036,8 @@ function spawnEnemy() {
     if (hpFill) {
         hpFill.style.transition = "none"; 
         hpFill.style.width = "100%";
-        hpFill.style.backgroundColor = "#4caf50";
+        hpFill.classList.remove('hp-yellow', 'hp-red');
+        hpFill.classList.add('hp-green');
         void hpFill.offsetWidth; // 觸發重繪，解決黑色 0% 渲染錯誤
     }
 
@@ -760,7 +1049,7 @@ function spawnEnemy() {
 
     const displayName = `No.${String(id).padStart(3, '0')} ${curE.name}`;
     document.getElementById('enemyName').innerText = `${displayName}${isShiny ? ' (✨閃光)' : ''}`;
-    document.getElementById('turnInfo').innerText = "剩餘回合：7 (在此之前不會逃跑)";
+    document.getElementById('turnInfo').innerText = "最大回合：7 (在此之前不會逃跑)";
     document.getElementById('msg').innerText = `✨ 野生的 ${curE.name} 出現了！`;
 
     // 延遲撥開草叢，之後恢復動畫
@@ -799,10 +1088,18 @@ async function throwBall() {
         if(curE.isShiny && !s.shinyOwned.includes(curE.id)) s.shinyOwned.push(curE.id);
         
         s.prog.evo++;
-        if(MEGA_ABLE.includes(curE.id)) s.prog.mega++;
+        if (MEGA_ABLE.includes(Number(curE.id))) {
+        s.prog.mega++; 
+        console.log(`✅ 成功累積 Mega 能量：No.${curE.id}，目前進度：${s.prog.mega}/5`);
+    }
         if(s.prog.evo >= 5) { s.prog.evo=0; s.items.stone++; }
         if(s.prog.mega >= 5) { s.prog.mega=0; s.items.mstone++; }
-        s.tasks.dCatch++; s.tasks.wCatch++; s.tasks.mCatch++;
+    
+
+        // 2. 核心調整：加入任務進度累積 (複製以下三行)
+        s.tasks.dCatch += 1; // 每日捕捉次數 +1
+        s.tasks.wCatch += 1; // 每週捕捉次數 +1
+        s.tasks.mCatch += 1; // 成就捕捉總數 +1
 
         // --- [ 個人式修正：給予經驗值 ] ---
         gainExp(10); // 👈 捕捉成功獲得 10 經驗
@@ -857,6 +1154,15 @@ function attack() {
     curE.hp = Math.max(0, curE.hp - 25); 
     document.getElementById('hpFill').style.width = curE.hp + "%";
     
+hpFill.classList.remove('hp-green', 'hp-yellow', 'hp-red');
+    if (curE.hp > 50) {
+        hpFill.classList.add('hp-green');
+    } else if (curE.hp > 25) {
+        hpFill.classList.add('hp-yellow');
+    } else {
+        hpFill.classList.add('hp-red');
+    }
+
     // --- [ 個人式修正：判定打倒邏輯 ] ---
     if(curE.hp <= 0) {
         // HP 歸零，判定為打倒！
@@ -962,68 +1268,321 @@ function buy(type, price) {
 }
 
 function renderTasks() {
-    const today = new Date().toDateString();
-    if(s.tasks.dailyDate !== today) { s.tasks.dailyDate = today; s.tasks.dRec = 0; s.tasks.dCatch = 0; s.tasks.claimed = s.tasks.claimed.filter(c => !c.includes('daily')); }
     const list = document.getElementById('taskList');
     const buildTask = (title, cur1, goal1, cur2, goal2, reward, id) => {
-        const done = cur1 >= goal1 && cur2 >= goal2;
+        // 判斷是否達成：如果目標是 0 視為自動達成該項，否則需 cur >= goal
+        const cond1 = goal1 === 0 ? true : cur1 >= goal1;
+        const cond2 = goal2 === 0 ? true : cur2 >= goal2;
+        const done = cond1 && cond2;
         const claimed = s.tasks.claimed.includes(id);
-        return `<div class="card" style="border-left:5px solid ${done?'#2ecc71':'#ccc'}"><b>${title}</b><br><small>記帳: ${cur1}/${goal1} | 捕捉: ${cur2}/${goal2}</small><br><button onclick="claimTask('${id}')" style="margin-top:5px; width:100%;" ${done && !claimed?'':'disabled'}>${claimed?'已領取':'領取 '+reward}</button></div>`;
+
+        return `
+            <div class="card" style="border-left:5px solid ${done ? (claimed ? '#95a5a6' : '#2ecc71') : '#ccc'}">
+                <b style="${claimed ? 'color:gray;' : ''}">${title}</b><br>
+                <small>進度 - 記帳: ${cur1}/${goal1} | 捕捉: ${cur2}/${goal2}</small><br>
+                <button onclick="claimTask('${id}')" 
+                        style="margin-top:5px; width:100%; height:35px; border-radius:5px; border:none; 
+                        background:${done && !claimed ? 'var(--p)' : '#eee'}; 
+                        color:${done && !claimed ? 'white' : '#666'};" 
+                        ${done && !claimed ? '' : 'disabled'}>
+                    ${claimed ? '已領取獎勳' : (done ? '領取 ' + reward : '尚未達成')}
+                </button>
+            </div>`;
     };
-    list.innerHTML = buildTask('每日任務', s.tasks.dRec, 1, s.tasks.dCatch, 1, '超級球 x2', 'daily_1') + buildTask('每週挑戰', s.tasks.wRec, 5, s.tasks.wCatch, 5, '進化石 x1 + 高級球 x3', 'weekly_1') + buildTask('記帳達人 (成就)', s.tasks.mRec, 50, 0, 0, '大師球 x1', 'ach_1') + buildTask('捕捉大師 (成就)', 0, 0, s.tasks.mCatch, 50, 'Mega石 x1', 'ach_2');
+
+    list.innerHTML = 
+        buildTask('每日任務', s.tasks.dRec, 1, s.tasks.dCatch, 1, '超級球 x2', 'daily_1') + 
+        buildTask('每週挑戰', s.tasks.wRec, 5, s.tasks.wCatch, 5, '進化石 x1 + 高級球 x3', 'weekly_1') + 
+        buildTask('記帳達人 (成就)', s.tasks.mRec, 50, 0, 0, '大師球 x1', 'ach_1') + 
+        buildTask('捕捉大師 (成就)', 0, 0, s.tasks.mCatch, 30, 'Mega石 x1', 'ach_2');
 }
 
 function claimTask(id) {
-    if(id === 'daily_1') { s.items.great += 2; }
-    else if(id === 'weekly_1') { s.items.stone++; s.items.ultra += 3; }
-    else if(id === 'ach_1') { s.items.master++; }
-    else if(id === 'ach_2') { s.items.mstone++; }
-    s.tasks.claimed.push(id);
-    updateUI(); renderTasks();
+    if (id === 'daily_1') { 
+        s.items.great += 2; 
+    }
+    else if (id === 'weekly_1') { 
+        s.items.stone++; 
+        s.items.ultra += 3; 
+    }
+    else if (id === 'ach_1') { 
+        // 根據 mRec 每達到 50 就領取一次大師球
+        const claimCount = Math.floor(s.tasks.mRec / 50);  // 每達 50 次就領一次
+        if (claimCount > 0) {
+            s.items.master += claimCount;  // 領取大師球
+            s.tasks.mRec -= claimCount * 50;  // 扣除已領取的記帳數量
+        }
+    }
+    else if (id === 'ach_2') { 
+        // --- 捕捉大師 (每 30 隻換 1 Mega石) ---
+        // 比照 ach_1 的邏輯：計算可領取次數
+        const claimCount = Math.floor(s.tasks.mCatch / 30); 
+        
+        if (claimCount > 0) {
+            s.items.mstone += claimCount;  // 增加 Mega 石數量
+            s.tasks.mCatch -= claimCount * 30; // 🔴 關鍵：扣除已使用的捕捉數量
+            alert(`🎉 恭喜！消耗 ${claimCount * 30} 隻捕捉進度，獲得 Mega石 x ${claimCount}！`);
+        }
+    }
+
+    // 🔴 存檔與 UI 更新 (確保數據不會丟失)
+    if (typeof saveData === 'function') saveData(); 
+    updateUI(); 
+    renderTasks();
 }
 
 let chartInstance = null;
-function switchChart(type) { currentChartType = type; document.getElementById('chartControls').style.display = (type==='month') ? 'flex' : 'none'; renderCharts(); }
+function switchChart(type) { 
+    currentChartType = type; 
+    document.getElementById('chartControls').style.display = (type==='month') ? 'flex' : 'none'; 
+    renderCharts(); 
+}
+
 function renderCharts() {
     const ctx = document.getElementById('chartCanvas').getContext('2d');
     if(chartInstance) chartInstance.destroy();
     let labels = [], data = [], chartType = 'line';
-    if(currentChartType === 'year') { labels = Object.keys(s.yearSums).sort(); data = labels.map(l => s.yearSums[l]); }
-    else if(currentChartType === 'month') { const target = document.getElementById('chartMonthPicker').value; const filtered = s.hist.filter(h => h.date.startsWith(target)); const days = {}; filtered.forEach(h => days[h.date] = (days[h.date]||0) + h.amt); labels = Object.keys(days).sort(); data = labels.map(l => days[l]); }
-    else { labels = Object.keys(s.catSums); data = labels.map(l => s.catSums[l]); chartType = 'pie'; }
-    chartInstance = new Chart(ctx, { type: chartType, data: { labels, datasets: [{ label: '支出金額', data, backgroundColor: ['#ff6384','#36a2eb','#cc65fe','#ffce56','#4bc0c0','#f1c40f','#e67e22'], borderColor: '#2d5a27', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+    if(currentChartType === 'year') { 
+        labels = Object.keys(s.yearSums).sort(); 
+        data = labels.map(l => s.yearSums[l]); 
+    }
+    else if(currentChartType === 'month') { 
+        const target = document.getElementById('chartMonthPicker').value; 
+        const filtered = s.hist.filter(h => h.date.startsWith(target)); 
+        const days = {}; 
+        filtered.forEach(h => days[h.date] = (days[h.date]||0) + h.amt); 
+        labels = Object.keys(days).sort(); 
+        data = labels.map(l => days[l]); 
+    }
+    else { 
+        labels = Object.keys(s.catSums); 
+        data = labels.map(l => s.catSums[l]); 
+        chartType = 'pie'; 
+    }
+
+    chartInstance = new Chart(ctx, { 
+        type: chartType, 
+        data: { 
+            labels, 
+            datasets: [{ 
+                label: '支出金額', 
+                data, 
+                backgroundColor: ['#ff6384','#36a2eb','#cc65fe','#ffce56','#4bc0c0','#f1c40f','#e67e22'], 
+                borderColor: '#2d5a27', 
+                tension: 0.1 
+            }] 
+        }, 
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false 
+        } 
+    });
 }
 
+let tempData = []; // 暫存區
+let lastImportCount = 0; // 儲存上次匯入成功筆數
+
 function handleCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
     reader.onload = function(ev) {
-        const lines = ev.target.result.split('\n');
-        let count = 0;
-        lines.forEach(line => {
-            const cols = line.split(',');
-            if(cols.length >= 4 && !isNaN(parseInt(cols[3]))) {
-                const date = cols[0].replace(/\//g, '-');
-                const amt = parseInt(cols[3]);
-                s.hist.push({id: Date.now()+count, date, cat: "其他", amt, note: cols[2], reward: Math.floor(amt*0.1)});
-                s.yearSums[date.substring(0,7)] = (s.yearSums[date.substring(0,7)] || 0) + amt;
-                s.catSums["其他"] = (s.catSums["其他"] || 0) + amt;
-                count++;
+        const lines = ev.target.result.split(/\r?\n/).filter(line => line.trim() !== "");
+        if (lines.length <= 1) return;
+
+        tempData = [];
+        const previewList = document.getElementById('previewList');
+        previewList.innerHTML = "";
+        lastImportCount = 0; // 每次匯入前重置
+
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',').map(c => c.replace(/^["']|["']$/g, '').trim());
+            const rawDate = cols[1] || "";
+            const rawAmt = parseInt(cols[3]);
+
+            if (rawDate && !isNaN(rawAmt)) {
+                let finalDate = "";
+                if (rawDate.length === 8 && !isNaN(rawDate)) {
+                    finalDate = `${rawDate.substring(0,4)}-${rawDate.substring(4,6)}-${rawDate.substring(6,8)}`;
+                } else {
+                    let parts = rawDate.replace(/\//g,'-').split('-');
+                    if (parts.length===3){
+                        let y = parts[0].padStart(4,'0');
+                        let m = parts[1].padStart(2,'0');
+                        let d = parts[2].padStart(2,'0');
+                        if (parseInt(y)<1000) y = (parseInt(y)+1911).toString();
+                        finalDate = `${y}-${m}-${d}`;
+                    } else {
+                        finalDate = new Date().toISOString().split('T')[0];
+                    }
+                }
+
+                let category = "其他";
+                const note = (cols[7] || "").toLowerCase().trim();
+                if (note.includes("超商")||note.includes("企業社")||note.includes("便利商店")||note.includes("餐飲")||note.includes("商行")||note.includes("茶")) category="餐飲";
+                else if (note.includes("捷運")||note.includes("高鐵")||note.includes("台鐵")||note.includes("油品")) category="交通";
+                else if (note.includes("藥局")||note.includes("醫療")||note.includes("健保")) category="醫療";
+                else if (note.includes("購物")||note.includes("百貨")||note.includes("電子")) category="購物";
+                else if (note.includes("娛樂")||note.includes("影城")) category="娛樂";
+
+                const item = { date: finalDate, cat: category, note: (cols[7] || "載具消費").trim(), amt: rawAmt };
+                tempData.push(item);
+                lastImportCount++;
+
+                // 顯示暫存區資料
+                previewList.innerHTML += `
+    <div class="csv-item-mobile">
+        <div class="csv-row">
+            <input type="date" value="${item.date}" 
+                   onchange="tempData[${tempData.length-1}].date=this.value" class="csv-date">
+            <select onchange="tempData[${tempData.length-1}].cat=this.value" class="csv-cat">
+                <option value="其他" ${item.cat==="其他"?"selected":""}>其他</option>
+                <option value="餐飲" ${item.cat==="餐飲"?"selected":""}>餐飲</option>
+                <option value="交通" ${item.cat==="交通"?"selected":""}>交通</option>
+                <option value="購物" ${item.cat==="購物"?"selected":""}>購物</option>
+                <option value="娛樂" ${item.cat==="娛樂"?"selected":""}>娛樂</option>
+                <option value="醫療" ${item.cat==="醫療"?"selected":""}>醫療</option>
+            </select>
+        </div>
+        <div class="csv-row">
+            <input type="text" value="${item.note}" 
+                   onchange="tempData[${tempData.length-1}].note=this.value" class="csv-note" placeholder="備註">
+            <span class="csv-amt">$${item.amt}</span>
+        </div>
+    </div>`;
             }
-        });
-        updateUI(); alert(`成功導入 ${count} 筆紀錄！`);
+        }
+
+        if(tempData.length>0){
+            document.getElementById('csvPreviewArea').style.display = "block";
+            document.getElementById('importCount').innerText = `預覽資料數量: ${lastImportCount}`;
+        } else {
+            document.getElementById('importCount').innerText = `預覽資料數量: 0`;
+        }
     };
-    reader.readAsText(e.target.files[0]);
+
+    reader.readAsText(file);
+}
+
+function confirmImport() {
+    if(!tempData || tempData.length===0){ cancelImport(); return; }
+
+    tempData.forEach((item,index)=>{
+        const reward = Math.floor(item.amt*0.1);
+        const monthKey = item.date.substring(0,7);
+
+        s.yearSums[monthKey] = (s.yearSums[monthKey]||0)+item.amt;
+        s.catSums[item.cat] = (s.catSums[item.cat]||0)+item.amt;
+        s.bal += reward;
+        s.pool += item.amt;
+
+        s.hist.push({
+            id: Date.now()+index+Math.random(),
+            date:item.date, cat:item.cat, amt:item.amt, note:item.note, reward:reward
+        });
+
+        if(s.tasks){ s.tasks.dRec++; s.tasks.wRec++; s.tasks.mRec++; }
+    });
+
+    // 戰鬥判定
+    const encounterCount = Math.floor(s.pool/500);
+    if(encounterCount>0){ 
+        s.pool %= 500; 
+        if(typeof battleQueue!=='undefined'){ 
+            battleQueue+=encounterCount; 
+            if(!isInBattle){ battleQueue--; isInBattle=true; if(window.spawnEnemy) spawnEnemy(); } 
+        } 
+    }
+
+    cancelImport();
+    updateUI();
+    if(window.renderCharts) renderCharts();
+}
+
+function cancelImport(){
+    tempData=[];
+    lastImportCount=0;
+    document.getElementById('csvPreviewArea').style.display="none";
+    document.getElementById('csvFile').value="";
+    document.getElementById('importCount').innerText=`預覽資料數量: 0`;
+}
+function confirmImport() {
+    if (tempData.length === 0) return;
+
+    tempData.forEach((item, index) => {
+        const reward = Math.floor(item.amt * 0.1);
+        const monthKey = item.date.substring(0, 7);
+
+        // 1. 同步全域數值 (s 為你的狀態物件)
+        s.bal += reward;
+        s.pool += item.amt;
+        s.yearSums[monthKey] = (s.yearSums[monthKey] || 0) + item.amt;
+        s.catSums[item.cat] = (s.catSums[item.cat] || 0) + item.amt;
+
+        // 2. 存入歷史紀錄
+        s.hist.push({
+            id: Date.now() + index + Math.random(),
+            date: item.date,
+            cat: item.cat,
+            amt: item.amt,
+            note: item.note,
+            reward: reward
+        });
+
+        // 3. 任務計數
+        s.tasks.dRec++; s.tasks.wRec++; s.tasks.mRec++;
+    });
+
+    // 4. 戰鬥觸發邏輯 (直接沿用你的 record 核心)
+    const encounterCount = Math.floor(s.pool / 500);
+    if (encounterCount > 0) {
+        s.pool %= 500;
+        battleQueue += encounterCount;
+        if (!isInBattle) {
+            battleQueue--; isInBattle = true; spawnEnemy();
+        }
+    }
+
+    const importedCount = tempData.length; // 先存好匯入筆數
+cancelImport();
+updateUI();
+if (window.renderCharts) renderCharts();
+alert(`正式導入成功！共 ${importedCount} 筆資料。`);
+}
+
+function cancelImport() {
+    tempData = [];
+    document.getElementById('csvPreviewArea').style.display = "none";
 }
 
 function searchHistory() {
-    const start = document.getElementById('hStart').value;
-    const end = document.getElementById('hEnd').value;
+    const start = document.getElementById('hStart').value; // 格式: YYYY-MM-DD
+    const end = document.getElementById('hEnd').value;     // 格式: YYYY-MM-DD
     if(!start || !end) return;
+
     const list = document.getElementById('historyList');
     list.innerHTML = "";
-    s.hist.filter(h => h.date >= start && h.date <= end).forEach(h => { list.innerHTML += `<div style="font-size:12px; padding:5px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;"><span>${h.date} | ${h.cat} | $${h.amt}</span><button onclick="delHist(${h.id})" style="color:red; border:none; background:none;">刪除</button></div>`; });
-}
 
+    // 進行字串比較篩選
+    const filtered = s.hist.filter(h => h.date >= start && h.date <= end);
+
+    if (filtered.length === 0) {
+        list.innerHTML = "<div style='text-align:center; padding:20px; color:gray;'>區間內無資料</div>";
+        return;
+    }
+
+    filtered.forEach(h => { 
+        list.innerHTML += `
+            <div style="font-size:12px; padding:8px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-weight:bold;">${h.date} | ${h.cat} | $${h.amt}</span>
+                    <span style="color:#666;">📝 ${h.note || '無備註'}</span>
+                </div>
+                <button onclick="delHist(${h.id})" style="color:red; border:none; background:none; cursor:pointer;">刪除</button>
+            </div>`; 
+    });
+}
 function delHist(id) {
     if(!confirm("確定刪除？這會影響統計結果。")) return;
     const idx = s.hist.findIndex(h => h.id === id);
