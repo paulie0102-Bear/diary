@@ -1177,37 +1177,43 @@ const CHAMPION_DATA = {
     'cynthia':{ name: '神奧地區｜竹蘭的遺跡之魂', ids: [445, 448, 350] }  // 烈咬陸鯊、路卡利歐、美納斯
 };
 
-// --- [ 初始化與存檔讀取 ] ---
 window.onload = () => {
+    // 1. 讀取存檔
     const saved = localStorage.getItem('pokemaster_v60');
     if(saved) {
         const loaded = JSON.parse(saved);
-        // 合併存檔資料
+        // 合併存檔資料 (確保深層物件如 tasks, dailyWild 也能被正確載入)
         s = { 
             ...s, 
             ...loaded, 
-            claimedGifts: (loaded.claimedGifts || []) 
+            claimedGifts: (loaded.claimedGifts || []),
+            tasks: loaded.tasks || s.tasks // 🚩 確保任務進度被載入
         }; 
     } else {
         if (!s.claimedGifts) s.claimedGifts = [];
     }
- // 如果 s 已經存在，請確保它包含這兩個欄位
 
-s.dailyWild = s.dailyWild || {
+    // 2. 初始化野怪與任務結構 (防止遺漏)
+    s.dailyWild = s.dailyWild || { claimed: false, lastDate: "" };
+    s.tasks = s.tasks || { dailyDate: "", weeklyDate: "", dRec: 0, dCatch: 0, wRec: 0, wCatch: 0, claimed: [] };
 
-    claimed: false,  // 紀錄今天是否已經抓到了
+    // 🚩 3. [核心新增]：載入資料後，立即檢查是否需要換日重置
+    // 這個順序非常重要，一定要在 updateUI 之前！
+    checkTaskReset(); 
 
-    lastDate: ""     // 紀錄上一次遇到的日期
-
-};
+    // 4. 設定時間選擇器預設值
     document.getElementById('recDate').valueAsDate = new Date();
     document.getElementById('chartMonthPicker').value = new Date().toISOString().substring(0, 7);
     
-    // ✅ [核心修改]：將原本的 lockClaimedGifts(); 改為執行 updateGiftButtons();
-    // 這樣重新整理後，JS 才會立即掃描存檔，把博士的土狼犬名場面重新畫上去
-    updateGiftButtons(); 
+    // 5. 更新 UI 狀態
+    updateGiftButtons(); // 掃描存檔，鎖定已領取或未解鎖的禮物
+    updateUI();          // 渲染主畫面數據
+    
+    // 6. 檢查今日野怪是否出現
+    if (typeof renderDailyWild === "function") {
+        renderDailyWild();
+    }
 
-    updateUI();
     setInterval(tickMega, 1000);
 };
 
