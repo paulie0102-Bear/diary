@@ -1242,23 +1242,46 @@ function checkTaskReset() {
 
     // 1. 每日重置判定
     // 比較「存檔日期」與「今天」是否不同
+    function checkTaskReset() {
+    // 🚩 [安全性檢查]
+    if (!s.tasks) {
+        s.tasks = { dailyDate: "", weeklyDate: "", dRec: 0, dCatch: 0, wRec: 0, wCatch: 0, claimed: [] };
+    }
+
+    const now = new Date();
+    const today = now.toDateString();
+    
+    // 計算週一
+    const tempDate = new Date(now.getTime()); 
+    const day = tempDate.getDay(); 
+    const diff = tempDate.getDate() - day + (day === 0 ? -6 : 1);
+    tempDate.setDate(diff);
+    const mondayDate = tempDate.toDateString();
+
+    let hasChanged = false;
+
+    // 1. 每日重置判定
     if (s.tasks.dailyDate !== today) {
-        console.log("📅 偵測到日期變更，正在重置每日任務...");
+        // --- 🚩 每日重置 CONSOLE ---
+        console.log(`%c📅 每日重置成功 | ${today}`, "color: white; background: #2ecc71; padding: 2px 5px; border-radius: 3px; font-weight: bold;");
+        console.log(`[系統紀錄]：舊日期 ${s.tasks.dailyDate || '無'} -> 新日期 ${today}`);
+        
         s.tasks.dailyDate = today;
         s.tasks.dRec = 0;   
         s.tasks.dCatch = 0; 
-        // 過濾掉所有包含 'daily' 字眼的已領取紀錄
         s.tasks.claimed = (s.tasks.claimed || []).filter(id => !id.includes('daily'));
         hasChanged = true;
     }
 
     // 2. 每週重置判定 (每週一重置)
     if (s.tasks.weeklyDate !== mondayDate) {
-        console.log("🗓️ 偵測到新的一週，正在重置每週任務...");
+        // --- 🚩 每週重置 CONSOLE ---
+        console.log(`%c🗓️ 每週重置成功 | 週一標記: ${mondayDate}`, "color: white; background: #3498db; padding: 2px 5px; border-radius: 3px; font-weight: bold;");
+        console.log(`[系統紀錄]：本週任務進度已歸零並清除已領取清單。`);
+
         s.tasks.weeklyDate = mondayDate;
         s.tasks.wRec = 0;   
         s.tasks.wCatch = 0; 
-        // 過濾掉所有包含 'weekly' 字眼的已領取紀錄
         s.tasks.claimed = (s.tasks.claimed || []).filter(id => !id.includes('weekly'));
         hasChanged = true;
     }
