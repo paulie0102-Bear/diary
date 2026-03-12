@@ -1439,7 +1439,14 @@ window.onChampionBtnClick = function(key) {
 };
 
 
-// 1. 修改 window.onload，加入載具初始
+function initCarrier() {
+    const savedCarrier = localStorage.getItem('user_carrier');
+    if (savedCarrier) {
+        document.getElementById('carrierInput').value = savedCarrier;
+        renderBarcode(savedCarrier);
+    }
+}
+    
 function saveCarrier() {
     let code = document.getElementById('carrierInput').value.trim().toUpperCase();
     
