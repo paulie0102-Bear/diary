@@ -352,32 +352,6 @@
     }
     
 
-
-/* 水墨魚樣式 */
-.ink-fish {
-    position: fixed;
-    width: 25px;
-    height: 12px;
-    background: var(--ink-color);
-    border-radius: 50% 100% 50% 100%; /* 弄出一個流線魚型 */
-    pointer-events: none; /* 魚不會阻擋點擊 */
-    z-index: 5;
-    opacity: 0.4;
-    transition: transform 0.2s linear, left 2s ease-out, top 2s ease-out;
-    filter: blur(1px); /* 讓它看起來像在水裡暈開的墨 */
-}
-
-/* 魚尾巴 (裝飾) */
-.ink-fish::after {
-    content: '';
-    position: absolute;
-    right: -8px; top: 2px;
-    width: 10px; height: 8px;
-    background: var(--ink-color);
-    clip-path: polygon(0 50%, 100% 0, 80% 50%, 100% 100%);
-    opacity: 0.6;
-}
-
 </style>
 </head>
 <body>
@@ -503,53 +477,6 @@
 let currentViewDate = new Date();
 let selectedMood = "平";
         
-let fishes = [];
-const fishCount = 4;
-
-function initFishPond() {
-    const pond = document.querySelector('.scroll-canvas'); // 綁定在長河背景上
-    for (let i = 0; i < fishCount; i++) {
-        const fish = document.createElement('div');
-        fish.className = 'ink-fish';
-        document.body.appendChild(fish);
-        fishes.push({ el: fish, x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight });
-    }
-
-    // 每 3 秒，沒事做的魚會隨機游動 (巡航)
-    setInterval(() => {
-        fishes.forEach(f => {
-            if (Math.random() > 0.7) { // 只有部分魚會動，才顯得自然
-                const tx = Math.random() * window.innerWidth;
-                const ty = Math.random() * window.innerHeight;
-                updateFishPos(f, tx, ty);
-            }
-        });
-    }, 3000);
-
-    // iOS 觸控追隨
-    window.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        fishes.forEach(f => updateFishPos(f, touch.clientX, touch.clientY, true));
-    });
-}
-
-function updateFishPos(fish, tx, ty, isFast = false) {
-    const dx = tx - fish.x;
-    const dy = ty - fish.y;
-    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-    
-    fish.x = tx;
-    fish.y = ty;
-    
-    // 如果是觸碰，反應快一點
-    fish.el.style.transition = isFast ? 'all 1.5s cubic-bezier(0.1, 0.5, 0.5, 1)' : 'all 4s ease-in-out';
-    fish.el.style.left = fish.x + 'px';
-    fish.el.style.top = fish.y + 'px';
-    fish.el.style.transform = `rotate(${angle}deg)`;
-}
-
-
-
     // 擴充：初始化日曆
     function initCalendar() {
         const year = currentViewDate.getFullYear();
