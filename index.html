@@ -998,17 +998,37 @@ if (!window.playAnimWrapped) {
 
         
 
-        // 匯出 JSON 檔案
-        function exportData() {
-            const data = JSON.stringify(localStorage);
-            const blob = new Blob([data], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `diary_backup_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+        async function exportData() {
+    const data = JSON.stringify(localStorage);
+    const fileName = `diary_backup_${new Date().toISOString().slice(0,10)}.json`;
+    const blob = new Blob([data], {type: 'application/json'});
+
+    // 檢查是否支援原生分享功能 (Android APK 環境通常支援)
+    if (navigator.canShare && navigator.share) {
+        try {
+            const file = new File([blob], fileName, { type: 'application/json' });
+            await navigator.share({
+                title: '日記數據備份',
+                text: '這是您的日記備份檔案，建議存至雲端或傳送給自己。',
+                files: [file]
+            });
+            return; // 分享成功，結束執行
+        } catch (error) {
+            console.log('分享取消或失敗:', error);
+            // 如果分享失敗（例如使用者按取消），則嘗試走下載流程
         }
+    }
+
+    // --- 回退方案：電腦瀏覽器下載 ---
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
         // 讀取 JSON 檔案並覆蓋
         function importData(event) {
