@@ -684,33 +684,33 @@ function selectMood(mood, el) {
     
         
     // 季節粒子生成器
-    function initSeasonEffects() {
+function initSeasonEffects(manualMonth) {
     const container = document.getElementById('season-particles');
-    const month = new Date().getMonth() + 1;
-    let config = { char: '🌸', color: '#ffb7c5', shadow: 'none' }; 
+    // 如果有傳參數就用參數，沒有就抓系統月份 (+1 是為了符合 1-12 月邏輯)
+    const month = (manualMonth !== undefined) ? manualMonth : (new Date().getMonth() + 1);
+    
+    // 清空舊的粒子，避免切換時螢幕太亂
+    container.innerHTML = '';
 
+    // 根據月份決定配置
+    let config;
     if (month >= 3 && month <= 5) {
-        // 春：櫻花
-        config = { char: '🌸', color: '#ffb7c5', shadow: 'none' };
-    } 
-    else if (month >= 6 && month <= 8) {
-        // 夏：翠竹葉與螢火蟲微光 (改用綠色葉片與光點)
-        const isFirefly = Math.random() > 0.5;
-        config = isFirefly 
-            ? { char: '●', color: '#d4fc79', shadow: '0 0 10px #d4fc79' } // 螢火蟲
-            : { char: '🍃', color: '#2d5a27', shadow: 'none' };           // 竹葉
-    } 
-    else if (month >= 9 && month <= 11) {
-        // 秋：楓葉
-        config = { char: '🍁', color: '#d35400', shadow: 'none' };
-    } 
-    else {
-        // 冬：下雪
-        config = { char: '❄️', color: '#ffffff', shadow: '0 0 5px #fff' };
+        config = { char: '🌸', color: '#ffb7c5', shadow: 'none' }; // 春
+    } else if (month >= 6 && month <= 8) {
+        config = { char: '🍃', color: '#2d5a27', shadow: 'none' }; // 夏 (預設竹葉)
+    } else if (month >= 9 && month <= 11) {
+        config = { char: '🍁', color: '#d35400', shadow: 'none' }; // 秋
+    } else {
+        config = { char: '❄️', color: '#ffffff', shadow: '0 0 5px #fff' }; // 冬
     }
 
+    // 生成粒子 (如果是夏天，額外隨機加入螢火蟲)
     for (let i = 0; i < 20; i++) {
-        createParticle(container, config);
+        let currentConfig = { ...config };
+        if (month >= 6 && month <= 8 && Math.random() > 0.5) {
+            currentConfig = { char: '●', color: '#d4fc79', shadow: '0 0 10px #d4fc79' };
+        }
+        createParticle(container, currentConfig);
     }
 }
 
