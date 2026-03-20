@@ -216,12 +216,21 @@
     
     /* 心情印章圖示 */
     .mood-seal {
-        position: absolute; width: 24px; height: 24px;
-        background: var(--seal-red); color: white;
-        border-radius: 50%; font-size: 12px; line-height: 24px;
-        text-align: center; opacity: 0.8; transform: rotate(-10deg);
-        bottom: 2px; right: 2px;
-    }
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    color: white;
+    border-radius: 3px; /* 改成稍微方正的印章感 */
+    font-size: 11px;
+    line-height: 20px;
+    text-align: center;
+    bottom: 4px;
+    right: 4px;
+    opacity: 0.9;
+    transform: rotate(-8deg);
+    font-family: "STKaiti", serif;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
 
     .day-detail {
         margin: 20px; padding: 20px; flex: 1;
@@ -231,6 +240,19 @@
     .detail-hint { color: #888; text-align: center; margin-top: 50px; }
     .diary-entry { animation: fadeIn 0.5s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .ink-tag {
+    background: rgba(44, 46, 49, 0.05); /* 更輕透的墨色 */
+    color: var(--ink-color);
+    padding: 2px 10px;
+    border-radius: 2px; /* 稍微方正一點點，更像印章或籤條 */
+    font-size: 13px;
+    border: 1px dashed rgba(44, 46, 49, 0.3); /* 改用虛線，增加手作感 */
+    display: inline-block;
+    font-family: "STKaiti", "KaiTi", serif; /* 回歸楷體，維持整體風格 */
+    margin-top: 4px;
+    vertical-align: middle;
+}
 </style>
 <style>
     /* --- 看今朝專用 CSS --- */
@@ -318,6 +340,7 @@
         filter: grayscale(1) blur(2px);
         opacity: 0.6;
     }
+    
 </style>
 </head>
 <body>
@@ -461,22 +484,36 @@ let selectedMood = "平";
         }
 
         // 填充日期
-        for (let d = 1; d <= daysInMonth; d++) {
-            const cell = document.createElement('div');
-            cell.className = 'day-cell';
-            cell.innerHTML = `<span class="day-num">${d}</span>`;
-            
-            // 檢查該日是否有日記 (格式: ink_diary_YYYY-MM-DD)
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const hasData = Object.keys(localStorage).some(key => key.includes(dateStr) || checkOldFormat(key, dateStr));
+        // 在 initCalendar 的日期循環中修改這段：
+for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    cell.innerHTML = `<span class="day-num">${d}</span>`;
+    
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    
+    // 尋找當天的資料並判斷心情
+    const entryKey = Object.keys(localStorage).find(key => key.includes(dateStr) || checkOldFormat(key, dateStr));
 
-            if (hasData) {
-                cell.innerHTML += `<div class="mood-seal">墨</div>`;
-            }
+    if (entryKey) {
+        let sealColor = 'var(--seal-red)'; // 預設紅色
+        let moodLabel = '墨';
+        
+        try {
+            const data = JSON.parse(localStorage.getItem(entryKey));
+            // 根據心情設定印章顏色
+            if (data.mood === '喜') { sealColor = '#e67e22'; moodLabel = '喜'; } // 暖橘
+            if (data.mood === '憂') { sealColor = '#5d6d7e'; moodLabel = '憂'; } // 灰藍
+            if (data.mood === '憤') { sealColor = '#2c3e50'; moodLabel = '憤'; } // 濃墨黑
+            if (data.mood === '平') { sealColor = '#8b1e1e'; moodLabel = '平'; } // 標準硃砂紅
+        } catch(e) { /* 舊資料維持紅色 */ }
 
-            cell.onclick = () => showDayDetail(dateStr);
-            daysContainer.appendChild(cell);
-        }
+        cell.innerHTML += `<div class="mood-seal" style="background:${sealColor}">${moodLabel}</div>`;
+    }
+
+    cell.onclick = () => showDayDetail(dateStr);
+    daysContainer.appendChild(cell);
+}
     }
 
     // 格式轉換檢查（相容舊有的 timestamp 存檔）
@@ -495,37 +532,84 @@ let selectedMood = "平";
     }
 
     function showDayDetail(dateStr) {
-        const detailBox = document.getElementById('day-detail');
-        const entries = Object.keys(localStorage)
-            .filter(key => key.includes(dateStr) || checkOldFormat(key, dateStr))
-            .map(key => localStorage.getItem(key));
+    const detailBox = document.getElementById('day-detail');
+    
+    const entryKeys = Object.keys(localStorage).filter(key => 
+        key.includes(dateStr) || checkOldFormat(key, dateStr)
+    );
 
-        if (entries.length > 0) {
-            detailBox.innerHTML = `<div class="diary-entry">
-                <div style="color:var(--seal-red); font-weight:bold; margin-bottom:10px;">📅 ${dateStr}</div>
-                <div style="line-height:1.8;">${entries.join('<hr style="border:0.5px dashed #ccc">')}</div>
-            </div>`;
-        } else {
-            detailBox.innerHTML = `<div class="detail-hint">該日無墨跡留存</div>`;
-        }
+    if (entryKeys.length > 0) {
+        let htmlContent = `<div style="color:var(--seal-red); font-weight:bold; margin-bottom:15px; font-size:1.1rem; border-left: 4px solid var(--seal-red); padding-left: 10px;">📅 ${dateStr}</div>`;
+        
+        const moodMap = { '喜': '😊', '平': '😐', '憂': '😔', '憤': '💢' };
+
+        // 排序，讓同一天的日記按時間順序排列
+        entryKeys.sort().forEach(key => {
+            const rawData = localStorage.getItem(key);
+            let displayData = { text: "", tag: "", mood: "" };
+
+            try {
+                const parsed = JSON.parse(rawData);
+                displayData.text = parsed.text || "";
+                displayData.tag = parsed.tag ? parsed.tag.trim() : ""; // 去掉首尾空格
+                displayData.mood = parsed.mood || "";
+            } catch (e) {
+                displayData.text = rawData;
+            }
+
+            // 只有當標籤真的有字時才渲染標籤 HTML
+            const tagHTML = displayData.tag 
+                ? `<span class="ink-tag">${displayData.tag.startsWith('#') ? displayData.tag : '#' + displayData.tag}</span>` 
+                : '';
+
+            htmlContent += `
+                <div class="diary-entry" style="margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px dashed rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        ${displayData.mood ? `<span style="font-size: 1.2rem; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.1));">${moodMap[displayData.mood] || ''}</span>` : ''}
+                        ${tagHTML}
+                    </div>
+                    <div style="line-height:1.8; color: var(--ink-color); white-space: pre-wrap; font-size: 17px; letter-spacing: 1px;">${displayData.text}</div>
+                </div>
+            `;
+        });
+        detailBox.innerHTML = htmlContent;
+    } else {
+        detailBox.innerHTML = `<div class="detail-hint" style="color:#888; text-align:center; margin-top:50px; font-style: italic;">── 該日無墨跡留存 ──</div>`;
     }
+}
 
     // 修改原本的 saveDiary，加上日期標籤以便搜尋
     const originalSaveDiary = saveDiary;
     saveDiary = function() {
-        const text = document.getElementById('diaryBox').value;
-        if(!text) return alert("請寫下您的心情");
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        // 存檔名稱包含日期，方便日曆檢索
-        const key = `ink_diary_${dateStr}_${now.getTime()}`;
-        localStorage.setItem(key, text);
-        alert("心情已封存於時光長河。");
-        closeModal('present-modal');
-        document.getElementById('diaryBox').value = "";
-        initCalendar(); // 刷新日曆狀態
+    const text = document.getElementById('diaryBox').value;
+    const tag = document.getElementById('tagInput').value; // 取得標籤
+    if(!text) return alert("請寫下您的心情");
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    // 將資料打包成物件
+    const diaryData = {
+        text: text,
+        tag: tag,
+        mood: typeof selectedMood !== 'undefined' ? selectedMood : '平', // 抓取選擇的心情
+        time: now.getTime()
     };
 
+    const key = `ink_diary_${dateStr}_${now.getTime()}`;
+    
+    // 儲存時轉為 JSON 字串
+    localStorage.setItem(key, JSON.stringify(diaryData));
+    
+    alert("心情已封存於時光長河。");
+    closeModal('present-modal');
+    
+    // 清空輸入欄位
+    document.getElementById('diaryBox').value = "";
+    document.getElementById('tagInput').value = "";
+    
+    if (typeof initCalendar === 'function') initCalendar(); // 刷新日曆
+};
     // 點擊「憶往昔」時初始化日曆
     const originalPlayAnim = playAnim;
     playAnim = function(element, modalId, animClass) {
